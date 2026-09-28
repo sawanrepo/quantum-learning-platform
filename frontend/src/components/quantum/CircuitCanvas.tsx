@@ -317,7 +317,7 @@ export function CircuitCanvas({
                 const span = Math.abs(a - b);
                 const spec = gateSpec(g.gate);
                 const color =
-                  spec.family === "entangling" ? "var(--entangle)" : "var(--beam)";
+                  spec?.family === "entangling" ? "var(--entangle)" : "var(--beam)";
 
                 const controlQubit = g.qubits[0];
                 const targetQubit = g.qubits[1];
@@ -407,9 +407,9 @@ function GateChip({
 }) {
   const spec = gateSpec(gate.gate);
   const isControl = gate.qubits.length === 2 && gate.qubits[0] === qubit;
-  const tone = familyTone[spec.family];
+  const tone = familyTone[spec?.family ?? "pauli"] ?? "border-border bg-card text-foreground";
 
-  if (isControl && (gate.gate === "CNOT" || gate.gate === "CZ")) {
+  if (isControl && (gate.gate === "CNOT" || gate.gate === "CZ" || gate.gate === "CX")) {
     return (
       <span
         className={`size-3.5 rounded-full ring-2 ring-entangle/40 transition-all ${
@@ -433,7 +433,7 @@ function GateChip({
     );
   }
 
-  if (gate.gate === "CNOT" && !isControl) {
+  if ((gate.gate === "CNOT" || gate.gate === "CX") && !isControl) {
     return (
       <span
         className={`relative flex size-7 items-center justify-center rounded-full border-2 border-entangle bg-card/80 text-entangle shadow-[0_0_10px_rgba(236,72,153,0.4)] transition-all ${

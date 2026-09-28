@@ -231,3 +231,5 @@ class PreloadedDemo(BaseModel):
     category: str
     circuit: CircuitExecutionRequest
     key_takeaway: str
+    concept: Optional[str] = None
+    theory: Optional[str] = None

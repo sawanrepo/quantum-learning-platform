@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MarkdownView } from "@/components/common/MarkdownView";
 import { useLab } from "@/lib/lab-store";
 import {
   ApiError,
@@ -148,8 +147,8 @@ export function ProfessorPanel() {
                 }`}
               >
                 <div className="label-tech mb-1 text-muted-foreground">{n.label}</div>
-                <div className="prose prose-invert prose-sm max-w-none text-sm">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{n.text}</ReactMarkdown>
+                <div className="text-sm">
+                  <MarkdownView content={n.text} />
                 </div>
               </article>
             ))}

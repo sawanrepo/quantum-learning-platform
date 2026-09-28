@@ -57,6 +57,9 @@ function Index() {
       })).sort((a, b) => a.state.localeCompare(b.state))
     : readCounts(lab.result);
 
+  // Static final circuit output probabilities
+  const finalCounts = readCounts(lab.result);
+
   const place = (qubit: number, step: number) => {
     if (!armed) return;
     const arity = gateSpec(armed).arity;
@@ -186,24 +189,64 @@ function Index() {
 
           {lab.error && <p className="border border-destructive/50 p-3 text-sm text-destructive font-mono">{lab.error}</p>}
 
-          {/* MEASUREMENT PROBABILITIES */}
-          {activeCounts.length > 0 && (
-            <div className="border border-border bg-card p-4">
-              <div className="flex items-center justify-between">
-                <span className="label-tech">
-                  Measurement Probabilities
-                </span>
-              </div>
-              <div className="mt-3 space-y-2 font-mono">
-                {activeCounts.map((r) => (
-                  <div key={r.state} className="flex items-center gap-3 text-sm">
-                    <span className="num w-16 text-primary font-bold">|{r.state}⟩</span>
-                    <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-primary" style={{ width: `${r.probability * 100}%` }} />
+          {/* MEASUREMENT PROBABILITIES GRID */}
+          {finalCounts.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Live Wave State Probabilities Card */}
+              <div className="border border-beam/40 bg-beam/5 p-4 rounded space-y-3 font-mono">
+                <div className="flex items-center justify-between border-b border-beam/20 pb-2">
+                  <span className="label-tech text-beam flex items-center gap-1.5 font-bold">
+                    <span className="inline-block size-2 rounded-full bg-beam animate-ping" />
+                    Live Wave State (Time t)
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-semibold">
+                    {activeStepObj ? activeStepObj.description : "Live Particle Position"}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {activeCounts.map((r) => (
+                    <div key={r.state} className="flex items-center gap-3 text-sm">
+                      <span className="num w-16 text-beam font-bold">|{r.state}⟩</span>
+                      <div className="h-2 flex-1 bg-muted/60 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-beam transition-all duration-300"
+                          style={{ width: `${r.probability * 100}%` }}
+                        />
+                      </div>
+                      <span className="num w-16 text-right font-bold text-beam">
+                        {(r.probability * 100).toFixed(1)}%
+                      </span>
                     </div>
-                    <span className="num w-16 text-right font-bold">{(r.probability * 100).toFixed(1)}%</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Static Final Circuit Output Card */}
+              <div className="border border-border bg-card p-4 rounded space-y-3 font-mono">
+                <div className="flex items-center justify-between border-b border-border pb-2">
+                  <span className="label-tech text-foreground flex items-center gap-1.5 font-bold">
+                    🎯 Final Circuit Output State
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-semibold">
+                    Static Execution Result
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {finalCounts.map((r) => (
+                    <div key={r.state} className="flex items-center gap-3 text-sm">
+                      <span className="num w-16 text-primary font-bold">|{r.state}⟩</span>
+                      <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary"
+                          style={{ width: `${r.probability * 100}%` }}
+                        />
+                      </div>
+                      <span className="num w-16 text-right font-bold">
+                        {(r.probability * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

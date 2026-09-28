@@ -227,3 +227,15 @@
 @utility animate-qrise {
   animation: qrise 0.4s ease-out both;
 }
+
+/* Markdown typography */
+.markdown-body strong,
+.inline-markdown strong {
+  font-weight: 700;
+  color: var(--color-foreground);
+}
+
+.markdown-body em,
+.inline-markdown em {
+  font-style: italic;
+}

@@ -34,7 +34,28 @@ export const GATE_SPECS: GateSpec[] = [
   { id: "MEASURE", symbol: "M", name: "Measurement", arity: 1, family: "measure", blurb: "Collapses the qubit onto the computational basis." },
 ];
 
-export const gateSpec = (id: GateId) => GATE_SPECS.find((g) => g.id === id)!;
+export const gateSpec = (id: string | GateId): GateSpec => {
+  if (!id) return GATE_SPECS[0];
+  const norm = id.toString().trim().toUpperCase();
+  const alias: Record<string, string> = {
+    M: "MEASURE",
+    MEASUREMENT: "MEASURE",
+    CX: "CNOT",
+  };
+  const resolved = alias[norm] || norm;
+  const found = GATE_SPECS.find((g) => g.id === resolved || g.symbol.toUpperCase() === resolved);
+  if (found) return found;
+
+  const isTwoQubit = resolved === "CNOT" || resolved === "CZ" || resolved === "SWAP";
+  return {
+    id: resolved as GateId,
+    symbol: resolved,
+    name: resolved,
+    arity: isTwoQubit ? 2 : 1,
+    family: isTwoQubit ? "entangling" : resolved === "MEASURE" ? "measure" : "pauli",
+    blurb: `Quantum Gate ${resolved}`,
+  };
+};
 
 let counter = 0;
 export const newGateId = () => `g${Date.now().toString(36)}${(counter++).toString(36)}`;

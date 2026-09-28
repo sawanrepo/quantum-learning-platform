@@ -176,21 +176,30 @@ export interface LearningModuleSummary {
   [key: string]: unknown;
 }
 
+export interface QuizOptionItem {
+  id: string;
+  text: string;
+}
+
 export interface QuizQuestion {
   id?: string | number;
   question: string;
-  options?: string[];
-  choices?: string[];
+  options?: (string | QuizOptionItem)[];
+  choices?: (string | QuizOptionItem)[];
   answer?: string | number;
   correct_answer?: string | number;
+  correct_option_id?: string;
   explanation?: string;
 }
 
 export interface LearningModuleDetail extends LearningModuleSummary {
+  category?: string;
   theory?: string;
   content?: string;
   markdown?: string;
+  content_markdown?: string;
   circuit?: unknown;
+  preloaded_circuit?: unknown;
   quiz?: QuizQuestion[];
   questions?: QuizQuestion[];
   challenge?: {
@@ -220,12 +229,16 @@ export interface DemoSummary {
   title?: string;
   name?: string;
   description?: string;
+  category?: string;
   concept?: string;
+  key_takeaway?: string;
   [key: string]: unknown;
 }
 
 export interface DemoDetail extends DemoSummary {
   circuit?: unknown;
+  key_takeaway?: string;
+  concept?: string;
   theory?: string;
   explanation?: string;
   steps?: string[];
