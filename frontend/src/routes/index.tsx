@@ -151,13 +151,10 @@ function Index() {
               <button onClick={lab.clearCircuit} className="border border-border bg-card px-3 py-1.5 text-xs font-mono">
                 Clear
               </button>
-              <button
-                onClick={() => void lab.runCircuit()}
-                disabled={lab.running}
-                className="bg-primary px-4 py-1.5 text-xs font-mono font-medium text-primary-foreground disabled:opacity-50"
-              >
-                {lab.running ? `Running · ${lab.stage}` : "Run Circuit"}
-              </button>
+              <div className="flex items-center gap-1.5 border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-mono font-medium text-primary rounded">
+                <span className="inline-block size-2 rounded-full bg-primary animate-ping" />
+                <span>Live Auto-Simulating</span>
+              </div>
             </div>
           </div>
 
@@ -183,77 +180,19 @@ function Index() {
               }}
               selectedId={selectedGate?.id ?? null}
               activeStep={lab.activeStep}
+              stepResults={lab.result?.step_results}
             />
           </div>
 
           {lab.error && <p className="border border-destructive/50 p-3 text-sm text-destructive font-mono">{lab.error}</p>}
-
-          {/* STEP-BY-STEP VISUALIZATION CONTROLLER */}
-          {stepResults.length > 0 && (
-            <div className="border border-primary/30 bg-primary/5 p-3 font-mono space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-primary animate-ping" />
-                  <span className="text-xs font-bold text-primary">Step Inspector:</span>
-                  <span className="text-xs font-bold border border-primary/40 bg-card px-2 py-0.5 rounded text-foreground">
-                    {activeStepObj ? activeStepObj.description : "Final Output State"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => lab.setActiveStep(0)}
-                    disabled={lab.activeStep === 0}
-                    className="border border-border bg-card px-2 py-1 text-[11px] hover:border-primary disabled:opacity-40"
-                  >
-                    Initial State
-                  </button>
-                  <button
-                    onClick={() => lab.setActiveStep(Math.max(0, (lab.activeStep ?? stepResults.length - 1) - 1))}
-                    disabled={lab.activeStep === 0}
-                    className="border border-border bg-card px-2 py-1 text-[11px] hover:border-primary disabled:opacity-40"
-                  >
-                    ◀ Prev Step
-                  </button>
-                  {stepResults.map((sr, idx) => (
-                    <button
-                      key={sr.step}
-                      onClick={() => lab.setActiveStep(idx)}
-                      className={`px-2 py-1 text-[11px] rounded border transition-colors ${
-                        (lab.activeStep === idx || (lab.activeStep === null && idx === stepResults.length - 1))
-                          ? "border-primary bg-primary text-primary-foreground font-bold"
-                          : "border-border bg-card text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {idx === 0 ? "Init" : `Step ${idx - 1}`}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => lab.setActiveStep(Math.min(stepResults.length - 1, (lab.activeStep ?? stepResults.length - 1) + 1))}
-                    disabled={lab.activeStep === stepResults.length - 1}
-                    className="border border-border bg-card px-2 py-1 text-[11px] hover:border-primary disabled:opacity-40"
-                  >
-                    Next Step ▶
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* MEASUREMENT PROBABILITIES */}
           {activeCounts.length > 0 && (
             <div className="border border-border bg-card p-4">
               <div className="flex items-center justify-between">
                 <span className="label-tech">
-                  {activeStepObj ? `Step State Probabilities (${activeStepObj.description})` : "Final Measurement Probabilities"}
+                  Measurement Probabilities
                 </span>
-                {lab.activeStep !== null && (
-                  <button
-                    onClick={() => lab.setActiveStep(null)}
-                    className="text-[11px] font-mono text-primary underline hover:text-primary/80"
-                  >
-                    Show Final Output
-                  </button>
-                )}
               </div>
               <div className="mt-3 space-y-2 font-mono">
                 {activeCounts.map((r) => (

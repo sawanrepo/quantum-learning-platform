@@ -283,13 +283,10 @@ function ModuleDetailPage() {
                   >
                     Clear Circuit
                   </button>
-                  <button
-                    onClick={() => void handleRunSim()}
-                    disabled={simulating}
-                    className="bg-primary px-4 py-1 text-xs font-mono font-medium text-primary-foreground disabled:opacity-50"
-                  >
-                    {simulating ? "Simulating..." : "Run Circuit"}
-                  </button>
+                  <div className="flex items-center gap-1.5 border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-mono font-medium text-primary rounded">
+                    <span className="inline-block size-2 rounded-full bg-primary animate-ping" />
+                    <span>Live Auto-Simulating</span>
+                  </div>
                   {activeTab === "challenge" && (
                     <button
                       onClick={() => void handleSubmitChallenge()}
@@ -315,7 +312,15 @@ function ModuleDetailPage() {
                     }));
                   }}
                   onSelect={setSelected}
+                  onToggleQubitState={(q) =>
+                    setCircuit((prev) => {
+                      const curStates = [...(prev.initial_states ?? Array(prev.qubits).fill("0"))];
+                      curStates[q] = curStates[q] === "1" ? "0" : "1";
+                      return { ...prev, initial_states: curStates };
+                    })
+                  }
                   selectedId={selectedGate?.id ?? null}
+                  stepResults={simResult?.step_results}
                 />
               </div>
 

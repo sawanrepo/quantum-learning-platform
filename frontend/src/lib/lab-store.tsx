@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -67,12 +68,9 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [runToken, setRunToken] = useState(0);
   const [activeStep, setActiveStep] = useState<number | null>(null);
-  const inflight = useRef(false);
 
   const setCircuit = useCallback((c: Circuit) => {
     setCircuitState(c);
-    setResult(null);
-    setStage("idle");
     setError(null);
     setActiveStep(null);
   }, []);
@@ -81,28 +79,44 @@ export function LabProvider({ children }: { children: ReactNode }) {
     setCircuitState((prev) => fn(prev));
   }, []);
 
+  // INSTANT REACTIVE AUTO-SIMULATION EFFECT
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        setRunning(true);
+        setError(null);
+        setStage("simulate");
+        const data = await simulateCircuitApi(circuit);
+        if (active) {
+          setResult(data);
+          setRunToken((t) => t + 1);
+          setStage("done");
+        }
+      } catch (err) {
+        if (active) {
+          setStage("idle");
+          setError(err instanceof ApiError ? err.message : "Simulation failed.");
+        }
+      } finally {
+        if (active) setRunning(false);
+      }
+    }, 40);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [circuit]);
+
   const runCircuit = useCallback(async () => {
-    if (inflight.current) return null;
-    if (circuit.gates.length === 0) {
-      setError("Place at least one gate on the circuit before running it.");
-      return null;
-    }
-    inflight.current = true;
-    setRunning(true);
-    setError(null);
-    setStage("circuit");
     try {
-      await wait(260);
+      setRunning(true);
+      setError(null);
       setStage("simulate");
       const data = await simulateCircuitApi(circuit);
-      setStage("state");
-      await wait(240);
-      setStage("measure");
-      await wait(240);
-      setStage("visualize");
       setResult(data);
       setRunToken((t) => t + 1);
-      await wait(260);
       setStage("done");
       return data;
     } catch (err) {
@@ -111,7 +125,6 @@ export function LabProvider({ children }: { children: ReactNode }) {
       return null;
     } finally {
       setRunning(false);
-      inflight.current = false;
     }
   }, [circuit]);
 
