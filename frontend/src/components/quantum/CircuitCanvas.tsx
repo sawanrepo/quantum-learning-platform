@@ -10,6 +10,8 @@ interface Props {
   onRemove?: (id: string) => void;
   onMove?: (id: string, step: number, qubit: number) => void;
   onSelect?: (gate: CircuitGate | null) => void;
+  onToggleQubitState?: (qubit: number) => void;
+  onStepClick?: (step: number) => void;
   selectedId?: string | null;
   /** highlights the executing column while a run animates */
   activeStep?: number | null;
@@ -31,6 +33,8 @@ export function CircuitCanvas({
   onRemove,
   onMove,
   onSelect,
+  onToggleQubitState,
+  onStepClick,
   selectedId = null,
   activeStep = null,
   scale = "normal",
@@ -47,69 +51,82 @@ export function CircuitCanvas({
     <div className="overflow-x-auto">
       <div className="min-w-max px-4 py-5">
         {/* step ruler */}
-        <div className="flex" style={{ paddingLeft: 76 }}>
+        <div className="flex" style={{ paddingLeft: 84 }}>
           {Array.from({ length: columns }).map((_, s) => (
-            <div
+            <button
               key={s}
-              className={`label-tech text-center ${activeStep === s ? "text-beam" : ""}`}
+              onClick={() => onStepClick?.(s)}
+              className={`label-tech text-center cursor-pointer rounded py-0.5 transition-colors hover:bg-beam/20 ${
+                activeStep === s ? "text-beam font-bold bg-beam/15 ring-1 ring-beam/40" : "text-muted-foreground"
+              }`}
               style={{ width: cell }}
+              title={`View state at Step ${s}`}
             >
-              {s}
-            </div>
+              Step {s}
+            </button>
           ))}
         </div>
 
         <div className="relative mt-1">
-          {Array.from({ length: circuit.qubits }).map((_, q) => (
-            <div key={q} className="relative flex items-center" style={{ height: cell + 12 }}>
-              <div className="num w-[76px] shrink-0 pr-3 text-right text-sm text-muted-foreground">
-                q<span className="text-foreground">{q}</span>
-                <span className="ml-1 text-[11px] text-muted-foreground/70">|0⟩</span>
-              </div>
-
-              {/* qubit wire */}
-              <div
-                className="absolute h-px bg-border"
-                style={{ left: 76, width: columns * cell, top: (cell + 12) / 2 }}
-              />
-
-              {Array.from({ length: columns }).map((_, s) => {
-                const gate = gateAt(q, s);
-                const isHover = hover?.q === q && hover?.s === s;
-                return (
-                  <div
-                    key={s}
-                    className="relative flex items-center justify-center"
-                    style={{ width: cell, height: cell + 12 }}
-                    onMouseEnter={() => setHover({ q, s })}
-                    onMouseLeave={() => setHover(null)}
-                    onDragOver={(e) => {
-                      if (editable) e.preventDefault();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const id = e.dataTransfer.getData("text/gate-id");
-                      const lib = e.dataTransfer.getData("text/gate-new") as GateId;
-                      if (id) onMove?.(id, s, q);
-                      else if (lib) onPlace?.(q, s);
-                    }}
-                    onClick={() => {
-                      if (gate) onSelect?.(gate);
-                      else if (armedGate) onPlace?.(q, s);
-                    }}
+          {Array.from({ length: circuit.qubits }).map((_, q) => {
+            const initState = circuit.initial_states?.[q] ?? "0";
+            return (
+              <div key={q} className="relative flex items-center" style={{ height: cell + 12 }}>
+                <div className="num w-[84px] shrink-0 pr-3 text-right text-xs text-muted-foreground flex items-center justify-end gap-1">
+                  <span>q<span className="text-foreground">{q}</span></span>
+                  <button
+                    onClick={() => onToggleQubitState?.(q)}
+                    className="num rounded px-1.5 py-0.5 text-[11px] font-semibold transition-all bg-primary/10 text-primary border border-primary/40 hover:bg-primary/20 hover:scale-105"
+                    title="Click to toggle initial qubit state (|0⟩ / |1⟩)"
                   >
-                    {activeStep === s && (
-                      <div className="pointer-events-none absolute inset-y-0 left-0 w-full bg-beam/6" />
-                    )}
-                    {!gate && editable && (isHover || (armedGate && isHover)) && (
-                      <div className="pointer-events-none absolute inset-2 border border-dashed border-beam/40" />
-                    )}
-                    {gate && <GateChip gate={gate} qubit={q} cell={cell} selected={selectedId === gate.id} editable={editable} onRemove={onRemove} />}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                    |{initState}⟩
+                  </button>
+                </div>
+
+                {/* qubit wire */}
+                <div
+                  className="absolute h-px bg-border"
+                  style={{ left: 84, width: columns * cell, top: (cell + 12) / 2 }}
+                />
+
+                {Array.from({ length: columns }).map((_, s) => {
+                  const gate = gateAt(q, s);
+                  const isHover = hover?.q === q && hover?.s === s;
+                  return (
+                    <div
+                      key={s}
+                      className="relative flex items-center justify-center"
+                      style={{ width: cell, height: cell + 12 }}
+                      onMouseEnter={() => setHover({ q, s })}
+                      onMouseLeave={() => setHover(null)}
+                      onDragOver={(e) => {
+                        if (editable) e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const id = e.dataTransfer.getData("text/gate-id");
+                        const lib = e.dataTransfer.getData("text/gate-new") as GateId;
+                        if (id) onMove?.(id, s, q);
+                        else if (lib) onPlace?.(q, s);
+                      }}
+                      onClick={() => {
+                        if (gate) onSelect?.(gate);
+                        else if (armedGate) onPlace?.(q, s);
+                      }}
+                    >
+                      {activeStep === s && (
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-full bg-beam/10 border-x border-beam/30" />
+                      )}
+                      {!gate && editable && (isHover || (armedGate && isHover)) && (
+                        <div className="pointer-events-none absolute inset-2 border border-dashed border-beam/40" />
+                      )}
+                      {gate && <GateChip gate={gate} qubit={q} cell={cell} selected={selectedId === gate.id} editable={editable} onRemove={onRemove} />}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
 
           {/* two-qubit connectors */}
           {circuit.gates
@@ -126,7 +143,7 @@ export function CircuitCanvas({
                   key={`link-${g.id}`}
                   className="pointer-events-none absolute w-px"
                   style={{
-                    left: 76 + g.step * cell + cell / 2,
+                    left: 84 + g.step * cell + cell / 2,
                     top: top * (cell + 12) + (cell + 12) / 2,
                     height: span * (cell + 12),
                     background: color,

@@ -15,6 +15,7 @@ import {
   removeGate as removeGateFn,
   setGateAngle as setGateAngleFn,
   setQubitCount as setQubitCountFn,
+  toggleInitialState as toggleInitialStateFn,
 } from "./circuit";
 import {
   ApiError,
@@ -42,6 +43,7 @@ interface LabContextValue {
   moveGate: (id: string, step: number, qubit: number) => void;
   setGateAngle: (id: string, angle: number) => void;
   setQubits: (n: number) => void;
+  toggleQubitState: (qubit: number) => void;
   clearCircuit: () => void;
   result: SimulationResult | null;
   stage: RunStage;
@@ -49,6 +51,8 @@ interface LabContextValue {
   error: string | null;
   runCircuit: () => Promise<SimulationResult | null>;
   runToken: number;
+  activeStep: number | null;
+  setActiveStep: (step: number | null) => void;
 }
 
 const LabContext = createContext<LabContextValue | null>(null);
@@ -62,6 +66,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [runToken, setRunToken] = useState(0);
+  const [activeStep, setActiveStep] = useState<number | null>(null);
   const inflight = useRef(false);
 
   const setCircuit = useCallback((c: Circuit) => {
@@ -69,6 +74,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
     setResult(null);
     setStage("idle");
     setError(null);
+    setActiveStep(null);
   }, []);
 
   const mutate = useCallback((fn: (c: Circuit) => Circuit) => {
@@ -119,6 +125,7 @@ export function LabProvider({ children }: { children: ReactNode }) {
       moveGate: (id, step, qubit) => mutate((c) => moveGateFn(c, id, step, qubit)),
       setGateAngle: (id, angle) => mutate((c) => setGateAngleFn(c, id, angle)),
       setQubits: (n) => mutate((c) => setQubitCountFn(c, n)),
+      toggleQubitState: (qubit) => mutate((c) => toggleInitialStateFn(c, qubit)),
       clearCircuit: () => setCircuit({ ...circuit, name: circuit.name, gates: [] }),
       result,
       stage,
@@ -126,8 +133,10 @@ export function LabProvider({ children }: { children: ReactNode }) {
       error,
       runCircuit,
       runToken,
+      activeStep,
+      setActiveStep,
     }),
-    [circuit, setCircuit, mutate, result, stage, running, error, runCircuit, runToken],
+    [circuit, setCircuit, mutate, result, stage, running, error, runCircuit, runToken, activeStep],
   );
 
   return <LabContext.Provider value={value}>{children}</LabContext.Provider>;

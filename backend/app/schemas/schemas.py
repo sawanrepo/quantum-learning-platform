@@ -61,6 +61,7 @@ class GateModel(BaseModel):
 
 class CircuitExecutionRequest(BaseModel):
     qubits: int = Field(default=2, ge=1, le=10, description="Number of qubits in circuit (1 to 10)")
+    initial_states: Optional[List[str]] = Field(default=None, description="Initial bit state for each qubit ('0' or '1')")
     gates: List[GateModel] = Field(default_factory=list)
     shots: int = Field(default=1024, ge=1, le=8192)
     backend: str = Field(default="qiskit_aer", description="Quantum simulator backend")
@@ -105,6 +106,13 @@ class ComplexNumber(BaseModel):
     magnitude: float
     phase: float
 
+class StepStateResult(BaseModel):
+    step: int
+    description: str
+    statevector: List[ComplexNumber]
+    bloch_vectors: List[BlochSphereVector]
+    probabilities: Dict[str, float]
+
 class SimulationResultResponse(BaseModel):
     counts: Dict[str, int]
     probabilities: Dict[str, float]
@@ -113,6 +121,7 @@ class SimulationResultResponse(BaseModel):
     num_qubits: int
     shots: int
     execution_time_ms: float
+    step_results: Optional[List[StepStateResult]] = None
     qiskit_code: str
     pennylane_code: str
     cirq_code: str

@@ -6,7 +6,8 @@ from app.schemas.schemas import (
     CircuitExecutionRequest,
     SimulationResultResponse,
     ComplexNumber,
-    BlochSphereVector
+    BlochSphereVector,
+    StepStateResult
 )
 from app.services.quantum.bloch import calculate_bloch_vectors
 from app.services.quantum.code_gen import (
@@ -109,54 +110,7 @@ def _apply_gate_numpy(statevector: np.ndarray, num_qubits: int, gate_name: str, 
     return new_sv
 
 
-def run_numpy_quantum_simulation(req: CircuitExecutionRequest) -> Tuple[np.ndarray, Dict[str, float], Dict[str, int]]:
-    num_qubits = req.qubits
-    dim = 2 ** num_qubits
-    
-    # Statevector initialized to |0...0>
-    sv = np.zeros(dim, dtype=complex)
-    sv[0] = 1.0 + 0.0j
-
-    # Sort gates by timeline step
-    gates = sorted(req.gates, key=lambda g: g.step or 0)
-
-    for g in gates:
-        if g.gate.upper() != "M":
-            sv = _apply_gate_numpy(sv, num_qubits, g.gate, g.target, g.control, g.params or {})
-
-    # Calculate exact probabilities
-    probs = {}
-    prob_array = np.abs(sv) ** 2
-    
-    # Format binary string representation (e.g. "00", "01", "10", "11")
-    for i in range(dim):
-        bitstring = format(i, f"0{num_qubits}b")
-        probs[bitstring] = float(round(prob_array[i], 6))
-
-    # Sample measurement counts based on probability distribution
-    counts = {}
-    if req.shots > 0 and len(prob_array) > 0:
-        # Normalize in case of float precision
-        p_norm = prob_array / np.sum(prob_array)
-        samples = np.random.choice(dim, size=req.shots, p=p_norm)
-        unique, counts_arr = np.unique(samples, return_counts=True)
-        for idx, count in zip(unique, counts_arr):
-            bitstring = format(idx, f"0{num_qubits}b")
-            counts[bitstring] = int(count)
-
-    return sv, probs, counts
-
-
-def run_quantum_simulation(req: CircuitExecutionRequest) -> SimulationResultResponse:
-    start_time = time.time()
-    
-    # Execute statevector engine
-    sv, probs, counts = run_numpy_quantum_simulation(req)
-
-    # Compute Bloch sphere vectors for each qubit
-    bloch_vectors = calculate_bloch_vectors(sv, req.qubits)
-
-    # Format statevector output
+def _format_statevector(sv: np.ndarray) -> List[ComplexNumber]:
     formatted_sv = []
     for val in sv:
         mag = float(np.abs(val))
@@ -169,7 +123,113 @@ def run_quantum_simulation(req: CircuitExecutionRequest) -> SimulationResultResp
                 phase=float(round(phase, 6))
             )
         )
+    return formatted_sv
 
+
+def _get_probs(sv: np.ndarray, num_qubits: int) -> Dict[str, float]:
+    dim = 2 ** num_qubits
+    prob_array = np.abs(sv) ** 2
+    probs = {}
+    for i in range(dim):
+        bitstring = format(i, f"0{num_qubits}b")
+        probs[bitstring] = float(round(prob_array[i], 6))
+    return probs
+
+
+def run_numpy_quantum_simulation(req: CircuitExecutionRequest) -> Tuple[np.ndarray, Dict[str, float], Dict[str, int], List[StepStateResult]]:
+    num_qubits = req.qubits
+    dim = 2 ** num_qubits
+    
+    # Calculate initial state index from initial_states array
+    init_idx = 0
+    if req.initial_states and isinstance(req.initial_states, list):
+        for q, val in enumerate(req.initial_states[:num_qubits]):
+            if str(val).strip() == "1":
+                init_idx |= (1 << q)
+
+    sv = np.zeros(dim, dtype=complex)
+    sv[init_idx] = 1.0 + 0.0j
+
+    # Track intermediate step results
+    step_results: List[StepStateResult] = []
+    
+    # Step 0: Initial State
+    initial_probs = _get_probs(sv, num_qubits)
+    initial_bloch = calculate_bloch_vectors(sv, num_qubits)
+    initial_sv_formatted = _format_statevector(sv)
+    
+    init_state_str = "".join([req.initial_states[q] if (req.initial_states and q < len(req.initial_states)) else "0" for q in range(num_qubits)])
+    step_results.append(
+        StepStateResult(
+            step=0,
+            description=f"Initial State |{init_state_str}⟩",
+            statevector=initial_sv_formatted,
+            bloch_vectors=initial_bloch,
+            probabilities=initial_probs
+        )
+    )
+
+    # Sort gates by step
+    gates_by_step: Dict[int, List] = {}
+    max_step = -1
+    for g in req.gates:
+        s = g.step or 0
+        if s not in gates_by_step:
+            gates_by_step[s] = []
+        gates_by_step[s].append(g)
+        if s > max_step:
+            max_step = s
+
+    # Execute step by step
+    for s in range(max_step + 1):
+        gates_at_step = gates_by_step.get(s, [])
+        applied_names = []
+        for g in gates_at_step:
+            if g.gate.upper() != "M":
+                sv = _apply_gate_numpy(sv, num_qubits, g.gate, g.target, g.control, g.params or {})
+                applied_names.append(f"{g.gate}(q{g.target})")
+        
+        step_probs = _get_probs(sv, num_qubits)
+        step_bloch = calculate_bloch_vectors(sv, num_qubits)
+        step_sv_formatted = _format_statevector(sv)
+        
+        desc = f"Step {s}: " + (", ".join(applied_names) if applied_names else "Identity")
+        step_results.append(
+            StepStateResult(
+                step=s + 1,
+                description=desc,
+                statevector=step_sv_formatted,
+                bloch_vectors=step_bloch,
+                probabilities=step_probs
+            )
+        )
+
+    # Calculate final probabilities
+    probs = _get_probs(sv, num_qubits)
+    prob_array = np.abs(sv) ** 2
+
+    # Sample measurement counts based on probability distribution
+    counts = {}
+    if req.shots > 0 and len(prob_array) > 0:
+        p_norm = prob_array / np.sum(prob_array)
+        samples = np.random.choice(dim, size=req.shots, p=p_norm)
+        unique, counts_arr = np.unique(samples, return_counts=True)
+        for idx, count in zip(unique, counts_arr):
+            bitstring = format(idx, f"0{num_qubits}b")
+            counts[bitstring] = int(count)
+
+    return sv, probs, counts, step_results
+
+
+def run_quantum_simulation(req: CircuitExecutionRequest) -> SimulationResultResponse:
+    start_time = time.time()
+    
+    # Execute statevector engine
+    sv, probs, counts, step_results = run_numpy_quantum_simulation(req)
+
+    # Compute Bloch sphere vectors for final state
+    bloch_vectors = calculate_bloch_vectors(sv, req.qubits)
+    formatted_sv = _format_statevector(sv)
     exec_time = round((time.time() - start_time) * 1000.0, 2)
 
     # Code generation
@@ -185,6 +245,7 @@ def run_quantum_simulation(req: CircuitExecutionRequest) -> SimulationResultResp
         num_qubits=req.qubits,
         shots=req.shots,
         execution_time_ms=exec_time,
+        step_results=step_results,
         qiskit_code=qiskit_code,
         pennylane_code=pennylane_code,
         cirq_code=cirq_code

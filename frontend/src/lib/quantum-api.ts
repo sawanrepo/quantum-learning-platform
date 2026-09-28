@@ -86,15 +86,18 @@ export interface CircuitGate {
 export interface Circuit {
   name: string;
   qubits: number;
+  initial_states?: string[];
   gates: CircuitGate[];
 }
 
 /** payload sent to the backend */
 function serializeCircuit(circuit: Circuit) {
+  const initial_states = circuit.initial_states ?? Array(circuit.qubits).fill("0");
   return {
     name: circuit.name,
     num_qubits: circuit.qubits,
     qubits: circuit.qubits,
+    initial_states,
     gates: [...circuit.gates]
       .sort((a, b) => a.step - b.step)
       .map((g) => ({
@@ -128,6 +131,14 @@ export interface Amplitude {
   phase?: number;
 }
 
+export interface StepStateResult {
+  step: number;
+  description: string;
+  statevector?: Array<Amplitude | [number, number] | { re: number; im: number }>;
+  bloch_vectors?: BlochVector[];
+  probabilities?: Record<string, number>;
+}
+
 export interface SimulationResult {
   counts?: Record<string, number>;
   shots?: number;
@@ -135,6 +146,7 @@ export interface SimulationResult {
   statevector?: Array<Amplitude | [number, number] | { re: number; im: number }>;
   bloch_vectors?: BlochVector[];
   bloch?: BlochVector[];
+  step_results?: StepStateResult[];
   [key: string]: unknown;
 }
 

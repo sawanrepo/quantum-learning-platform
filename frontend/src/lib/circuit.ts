@@ -42,11 +42,12 @@ export const newGateId = () => `g${Date.now().toString(36)}${(counter++).toStrin
 export const emptyCircuit = (qubits = 2): Circuit => ({
   name: "Untitled experiment",
   qubits,
+  initial_states: Array(qubits).fill("0"),
   gates: [],
 });
 
 export const MAX_STEPS = 14;
-export const MAX_QUBITS = 5;
+export const MAX_QUBITS = 8;
 
 export function circuitDepth(circuit: Circuit) {
   return circuit.gates.reduce((max, g) => Math.max(max, g.step + 1), 0);
@@ -113,9 +114,22 @@ export function setGateAngle(circuit: Circuit, id: string, angle: number): Circu
   };
 }
 
+export function toggleInitialState(circuit: Circuit, qubit: number): Circuit {
+  const curStates = [...(circuit.initial_states ?? Array(circuit.qubits).fill("0"))];
+  curStates[qubit] = curStates[qubit] === "1" ? "0" : "1";
+  return { ...circuit, initial_states: curStates };
+}
+
 export function setQubitCount(circuit: Circuit, qubits: number): Circuit {
   const n = Math.min(MAX_QUBITS, Math.max(1, qubits));
-  return { ...circuit, qubits: n, gates: circuit.gates.filter((g) => g.qubits.every((q) => q < n)) };
+  const curStates = circuit.initial_states ?? Array(circuit.qubits).fill("0");
+  const nextStates = Array.from({ length: n }, (_, i) => curStates[i] ?? "0");
+  return {
+    ...circuit,
+    qubits: n,
+    initial_states: nextStates,
+    gates: circuit.gates.filter((g) => g.qubits.every((q) => q < n)),
+  };
 }
 
 /* ---------------- example circuits ---------------- */

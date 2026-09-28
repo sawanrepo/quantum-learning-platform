@@ -37,7 +37,25 @@ function Index() {
   const [isCodeModalOpen, setIsCodeModalOpen] = useState<boolean>(false);
 
   const selectedGate = lab.circuit.gates.find((g) => g.id === selected?.id) ?? null;
-  const counts = readCounts(lab.result);
+  
+  const stepResults = lab.result?.step_results ?? [];
+  const activeStepObj = lab.activeStep !== null && stepResults[lab.activeStep]
+    ? stepResults[lab.activeStep]
+    : null;
+
+  // Active Bloch vectors (step-specific or final)
+  const activeBlochVectors = activeStepObj?.bloch_vectors
+    ? readBlochVectors({ bloch_vectors: activeStepObj.bloch_vectors })
+    : readBlochVectors(lab.result);
+
+  // Active probabilities (step-specific or final)
+  const activeCounts = activeStepObj?.probabilities
+    ? Object.entries(activeStepObj.probabilities).map(([state, prob]) => ({
+        state,
+        probability: prob,
+        count: Math.round(prob * (lab.result?.shots ?? 1024)),
+      })).sort((a, b) => a.state.localeCompare(b.state))
+    : readCounts(lab.result);
 
   const place = (qubit: number, step: number) => {
     if (!armed) return;
@@ -91,14 +109,39 @@ function Index() {
         />
 
         <div className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="label-tech mr-1">Presets:</span>
-            {EXAMPLE_CIRCUITS.map((c) => (
-              <button key={c.name} onClick={() => lab.setCircuit(c)} className="border border-border bg-card px-3 py-1.5 text-xs font-mono hover:border-primary">
-                {c.name}
-              </button>
-            ))}
-            <div className="ml-auto flex gap-2">
+          {/* TOOLBAR CONTROLS */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-card p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="label-tech mr-1">Qubits:</span>
+              <div className="flex items-center gap-1 border border-border bg-muted/30 p-1 rounded">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => lab.setQubits(n)}
+                    className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition-all ${
+                      lab.circuit.qubits === n
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+
+              <span className="label-tech ml-2 mr-1">Presets:</span>
+              {EXAMPLE_CIRCUITS.map((c) => (
+                <button
+                  key={c.name}
+                  onClick={() => lab.setCircuit(c)}
+                  className="border border-border bg-card px-2.5 py-1 text-xs font-mono hover:border-primary transition-colors"
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsCodeModalOpen(true)}
                 className="border border-border bg-card px-3 py-1.5 text-xs font-mono hover:border-primary flex items-center gap-1.5"
@@ -118,7 +161,12 @@ function Index() {
             </div>
           </div>
 
+          {/* CANVAS */}
           <div className="overflow-x-auto border border-border bg-card p-4">
+            <div className="mb-2 flex items-center justify-between text-xs font-mono text-muted-foreground">
+              <span>Click <span className="text-primary font-bold">|0⟩ / |1⟩</span> to toggle initial qubit bit state</span>
+              <span>Click step headers to inspect step state</span>
+            </div>
             <CircuitCanvas
               circuit={lab.circuit}
               armedGate={armed}
@@ -126,23 +174,95 @@ function Index() {
               onRemove={lab.removeGate}
               onMove={lab.moveGate}
               onSelect={setSelected}
+              onToggleQubitState={lab.toggleQubitState}
+              onStepClick={(s) => {
+                if (stepResults.length > 0) {
+                  const targetIdx = Math.min(s, stepResults.length - 1);
+                  lab.setActiveStep(targetIdx);
+                }
+              }}
               selectedId={selectedGate?.id ?? null}
+              activeStep={lab.activeStep}
             />
           </div>
 
           {lab.error && <p className="border border-destructive/50 p-3 text-sm text-destructive font-mono">{lab.error}</p>}
 
-          {counts.length > 0 && (
+          {/* STEP-BY-STEP VISUALIZATION CONTROLLER */}
+          {stepResults.length > 0 && (
+            <div className="border border-primary/30 bg-primary/5 p-3 font-mono space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block size-2 rounded-full bg-primary animate-ping" />
+                  <span className="text-xs font-bold text-primary">Step Inspector:</span>
+                  <span className="text-xs font-bold border border-primary/40 bg-card px-2 py-0.5 rounded text-foreground">
+                    {activeStepObj ? activeStepObj.description : "Final Output State"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => lab.setActiveStep(0)}
+                    disabled={lab.activeStep === 0}
+                    className="border border-border bg-card px-2 py-1 text-[11px] hover:border-primary disabled:opacity-40"
+                  >
+                    Initial State
+                  </button>
+                  <button
+                    onClick={() => lab.setActiveStep(Math.max(0, (lab.activeStep ?? stepResults.length - 1) - 1))}
+                    disabled={lab.activeStep === 0}
+                    className="border border-border bg-card px-2 py-1 text-[11px] hover:border-primary disabled:opacity-40"
+                  >
+                    ◀ Prev Step
+                  </button>
+                  {stepResults.map((sr, idx) => (
+                    <button
+                      key={sr.step}
+                      onClick={() => lab.setActiveStep(idx)}
+                      className={`px-2 py-1 text-[11px] rounded border transition-colors ${
+                        (lab.activeStep === idx || (lab.activeStep === null && idx === stepResults.length - 1))
+                          ? "border-primary bg-primary text-primary-foreground font-bold"
+                          : "border-border bg-card text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {idx === 0 ? "Init" : `Step ${idx - 1}`}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => lab.setActiveStep(Math.min(stepResults.length - 1, (lab.activeStep ?? stepResults.length - 1) + 1))}
+                    disabled={lab.activeStep === stepResults.length - 1}
+                    className="border border-border bg-card px-2 py-1 text-[11px] hover:border-primary disabled:opacity-40"
+                  >
+                    Next Step ▶
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MEASUREMENT PROBABILITIES */}
+          {activeCounts.length > 0 && (
             <div className="border border-border bg-card p-4">
-              <span className="label-tech">Measurement probabilities</span>
+              <div className="flex items-center justify-between">
+                <span className="label-tech">
+                  {activeStepObj ? `Step State Probabilities (${activeStepObj.description})` : "Final Measurement Probabilities"}
+                </span>
+                {lab.activeStep !== null && (
+                  <button
+                    onClick={() => lab.setActiveStep(null)}
+                    className="text-[11px] font-mono text-primary underline hover:text-primary/80"
+                  >
+                    Show Final Output
+                  </button>
+                )}
+              </div>
               <div className="mt-3 space-y-2 font-mono">
-                {counts.map((r) => (
+                {activeCounts.map((r) => (
                   <div key={r.state} className="flex items-center gap-3 text-sm">
-                    <span className="num w-14 text-primary font-bold">|{r.state}⟩</span>
+                    <span className="num w-16 text-primary font-bold">|{r.state}⟩</span>
                     <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
                       <div className="h-full bg-primary" style={{ width: `${r.probability * 100}%` }} />
                     </div>
-                    <span className="num w-14 text-right font-bold">{(r.probability * 100).toFixed(1)}%</span>
+                    <span className="num w-16 text-right font-bold">{(r.probability * 100).toFixed(1)}%</span>
                   </div>
                 ))}
               </div>
@@ -150,7 +270,7 @@ function Index() {
           )}
         </div>
 
-        <BlochSpherePanel vectors={readBlochVectors(lab.result)} runToken={lab.runToken} />
+        <BlochSpherePanel vectors={activeBlochVectors} runToken={lab.runToken} />
       </section>
 
       {/* PROFESSOR PANEL */}
