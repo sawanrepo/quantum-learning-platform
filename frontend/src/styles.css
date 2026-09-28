@@ -1,0 +1,229 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * QUANTUM LAB DESIGN SYSTEM
+ * Dark-first scientific instrument palette: deep ink backgrounds, graphite
+ * panels, a cold "beam" cyan as the instrument accent, amber for measurement,
+ * violet reserved for phase data. Every color is a semantic token.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  /* instrument surfaces */
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-rail: var(--rail);
+  --color-hairline: var(--hairline);
+  --color-grid: var(--grid);
+
+  /* data colors */
+  --color-beam: var(--beam);
+  --color-beam-dim: var(--beam-dim);
+  --color-measure: var(--measure);
+  --color-phase: var(--phase);
+  --color-entangle: var(--entangle);
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+
+  --color-chart-1: var(--beam);
+  --color-chart-2: var(--measure);
+  --color-chart-3: var(--phase);
+  --color-chart-4: var(--entangle);
+  --color-chart-5: var(--success);
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-display: "Space Grotesk", "IBM Plex Sans", sans-serif;
+}
+
+:root {
+  --radius: 0.25rem;
+
+  --background: oklch(0.165 0.018 250);
+  --foreground: oklch(0.95 0.008 240);
+
+  --panel: oklch(0.205 0.019 250);
+  --panel-raised: oklch(0.243 0.021 252);
+  --rail: oklch(0.185 0.018 250);
+  --hairline: oklch(1 0 0 / 8%);
+  --grid: oklch(1 0 0 / 5%);
+
+  --card: oklch(0.205 0.019 250);
+  --card-foreground: oklch(0.95 0.008 240);
+  --popover: oklch(0.223 0.02 252);
+  --popover-foreground: oklch(0.95 0.008 240);
+
+  --beam: oklch(0.82 0.13 192);
+  --beam-dim: oklch(0.55 0.08 196);
+  --measure: oklch(0.82 0.15 78);
+  --phase: oklch(0.7 0.15 296);
+  --entangle: oklch(0.78 0.13 152);
+  --success: oklch(0.76 0.15 155);
+  --warn: oklch(0.8 0.15 65);
+
+  --primary: oklch(0.82 0.13 192);
+  --primary-foreground: oklch(0.17 0.03 220);
+  --secondary: oklch(0.26 0.021 252);
+  --secondary-foreground: oklch(0.95 0.008 240);
+  --muted: oklch(0.24 0.02 252);
+  --muted-foreground: oklch(0.68 0.018 250);
+  --accent: oklch(0.28 0.03 220);
+  --accent-foreground: oklch(0.93 0.01 200);
+  --destructive: oklch(0.64 0.19 22);
+  --destructive-foreground: oklch(0.98 0.005 240);
+
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.82 0.13 192 / 45%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: oklch(0.82 0.13 192 / 25%);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--rail);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 12%);
+    border: 2px solid var(--rail);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(1 0 0 / 20%);
+  }
+}
+
+/* ---------- instrument utilities ---------- */
+
+@utility label-tech {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+@utility panel-surface {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+}
+
+@utility grid-field {
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+@utility scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 2.5%) 0px,
+    oklch(1 0 0 / 2.5%) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+@utility beam-rule {
+  background: linear-gradient(to right, transparent, var(--beam-dim), transparent);
+  height: 1px;
+}
+
+@utility corner-ticks {
+  position: relative;
+}
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes qpulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes qsweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+@keyframes qrise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-qpulse {
+  animation: qpulse 2s ease-in-out infinite;
+}
+@utility animate-qsweep {
+  animation: qsweep 1.6s linear infinite;
+}
+@utility animate-qrise {
+  animation: qrise 0.4s ease-out both;
+}
