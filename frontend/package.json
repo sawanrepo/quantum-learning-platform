@@ -16,7 +16,7 @@
   },
   "overrides": {
     "rolldown": "1.2.1",
-    "@tanstack/start-plugin-core": "1.168.32"
+    "@tanstack/start-plugin-core": "1.168.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
