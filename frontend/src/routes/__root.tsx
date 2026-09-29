@@ -15,19 +15,8 @@ import appCss from "../styles.css?url";
 import { healthApi, getApiBase } from "../lib/quantum-api";
 import { Cpu, BookOpen, Presentation, LayoutDashboard, Terminal, CheckCircle2, AlertCircle } from "lucide-react";
 
-function HeaderNav() {
-  const [isBackendOnline, setIsBackendOnline] = useState<boolean | null>(null);
+function HeaderNav({ isBackendOnline }: { isBackendOnline: boolean | null }) {
   const location = useLocation();
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      const ok = await healthApi();
-      setIsBackendOnline(ok);
-    };
-    void checkHealth();
-    const interval = setInterval(() => void checkHealth(), 10000);
-    return () => clearInterval(interval);
-  }, []);
 
   const navItems = [
     { to: "/", label: "Quantum Lab", icon: Cpu },
@@ -234,11 +223,90 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [backendStatus, setBackendStatus] = useState<'checking' | 'waking' | 'online' | 'offline'>('checking');
+  const [showReady, setShowReady] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    let checkInProgress = false;
+    
+    // If it takes more than 2 seconds for the first response, assume it's waking up on Render
+    const initialTimer = setTimeout(() => {
+      if (isMounted) {
+        setBackendStatus(prev => (prev === 'checking' ? 'waking' : prev));
+      }
+    }, 2000);
+
+    const runCheck = async () => {
+      if (checkInProgress) return;
+      checkInProgress = true;
+      try {
+        const ok = await healthApi();
+        if (!isMounted) return;
+        
+        if (ok) {
+          setBackendStatus(prev => {
+            if (prev === 'waking' || prev === 'checking') {
+              setShowReady(true);
+              setTimeout(() => {
+                if (isMounted) setShowReady(false);
+              }, 4000);
+            }
+            return 'online';
+          });
+        } else {
+          setBackendStatus(prev => (prev === 'online' ? 'offline' : 'waking'));
+        }
+      } catch (e) {
+        if (isMounted) {
+          setBackendStatus(prev => (prev === 'online' ? 'offline' : 'waking'));
+        }
+      } finally {
+        checkInProgress = false;
+      }
+    };
+
+    // Initial check sends request to wake up the backend
+    void runCheck();
+    
+    // Poll every 5 seconds; Render will hold the pending request or return errors until it's awake
+    const interval = setInterval(runCheck, 5000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <HeaderNav />
+      <div className="min-h-screen bg-background text-foreground flex flex-col relative">
+        {backendStatus === 'waking' && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-md transition-all duration-300">
+            <div className="bg-card border border-border p-8 rounded-xl shadow-2xl max-w-md text-center flex flex-col items-center gap-6 animate-in zoom-in-95 fade-in duration-300">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div>
+                <h2 className="text-xl font-bold font-display tracking-tight mb-2">Waking up Quantum Engine</h2>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  Please wait, our cloud backend is currently offline due to inactivity. We are spinning it up right now. This may take up to a minute...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showReady && (
+          <div className="fixed bottom-6 right-6 z-[100] bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300">
+            <CheckCircle2 className="w-5 h-5" />
+            <div>
+              <h3 className="font-bold text-sm">System Online</h3>
+              <p className="text-xs opacity-90">Website is ready to use.</p>
+            </div>
+          </div>
+        )}
+
+        <HeaderNav isBackendOnline={backendStatus === 'online' ? true : backendStatus === 'offline' ? false : null} />
         <div className="flex-1">
           <Outlet />
         </div>

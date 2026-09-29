@@ -5,7 +5,7 @@
  * The base URL is overridable at runtime and persisted per browser.
  */
 
-export const DEFAULT_API_BASE = "http://localhost:8000/api";
+export const DEFAULT_API_BASE = import.meta.env?.VITE_API_BASE_URL || "http://localhost:8000/api";
 const STORAGE_KEY = "qlab.apiBase";
 
 export function getApiBase(): string {
